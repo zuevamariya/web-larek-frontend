@@ -1,9 +1,7 @@
 export abstract class Component<T> {
-  protected constructor(protected readonly container: HTMLElement) {
-      // Учитывайте что код в конструкторе исполняется ДО всех объявлений в дочернем классе
-  }
+  protected constructor(protected readonly container: HTMLElement) {}
 
-  // Инструментарий для работы с DOM в дочерних компонентах
+// Инструментарий для работы с DOM в дочерних компонентах
 
   // Переключить класс
   toggleClass(element: HTMLElement, className: string, force?: boolean) {
@@ -17,6 +15,16 @@ export abstract class Component<T> {
       }
   }
 
+  // Установить изображение с алтернативным текстом
+  protected setImage(element: HTMLImageElement, src: string, alt?: string) {
+    if (element) {
+        element.src = src;
+        if (alt) {
+            element.alt = alt;
+        }
+    }
+  }
+  
   // Сменить статус блокировки
   setDisabled(element: HTMLElement, state: boolean) {
       if (element) {
@@ -33,16 +41,6 @@ export abstract class Component<T> {
   // Показать
   protected setVisible(element: HTMLElement) {
       element.style.removeProperty('display');
-  }
-
-  // Установить изображение с алтернативным текстом
-  protected setImage(element: HTMLImageElement, src: string, alt?: string) {
-      if (element) {
-          element.src = src;
-          if (alt) {
-              element.alt = alt;
-          }
-      }
   }
 
   // Вернуть корневой DOM-элемент
