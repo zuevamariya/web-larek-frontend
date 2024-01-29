@@ -1,7 +1,6 @@
 import {Component} from "./base/Component";
-import {IEvents, EventEmitter} from "./base/events";
+import {IEvents} from "./base/events";
 import {ensureElement} from "../utils/utils";
-import {Modal} from "./common/Modal";
 
 interface IPage {
     counter: number;

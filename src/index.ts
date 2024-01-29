@@ -1,5 +1,4 @@
 import './scss/styles.scss';
-
 import {WebLarekAPI} from "./components/WebLarekAPI";
 import {API_URL, CDN_URL} from "./utils/constants";
 import {EventEmitter} from "./components/base/events";
@@ -18,11 +17,6 @@ import { Contacts } from './components/Contacts';
 const events = new EventEmitter();
 const api = new WebLarekAPI(CDN_URL, API_URL);
 
-// Чтобы мониторить все события, для отладки
-events.onAll(({ eventName, data }) => {
-    console.log(eventName, data);
-})
-
 // Все шаблоны
 const successTemplate = ensureElement<HTMLTemplateElement>('#success');  //уведомление о покупке
 const cardCatalogTemplate = ensureElement<HTMLTemplateElement>('#card-catalog'); //на главной странице в галерее
@@ -30,24 +24,22 @@ const cardPreviewTemplate = ensureElement<HTMLTemplateElement>('#card-preview');
 const cardBasketTemplate = ensureElement<HTMLTemplateElement>('#card-basket');  //строка товара в корзине
 const basketTemplate = ensureElement<HTMLTemplateElement>('#basket');  //корзина с товарами
 const orderTemplate = ensureElement<HTMLTemplateElement>('#order');  //способ оплаты + адрес доставки
-const contactsTemplate = ensureElement<HTMLTemplateElement>('#contacts');  //email+телефон для оплаты
+const contactsTemplate = ensureElement<HTMLTemplateElement>('#contacts');  //email + телефон для оплаты
 
 // Модель данных приложения
 const appData = new AppState({}, events);
 
 // Глобальные контейнеры
 const page = new Page(document.body, events);
-const modal = new Modal(ensureElement<HTMLElement>('#modal-container'), events); //экземпляр маодальное окно
+const modal = new Modal(ensureElement<HTMLElement>('#modal-container'), events);
 
 // Переиспользуемые части интерфейса
 const basket = new Basket(cloneTemplate(basketTemplate), events);
 const order = new Order(cloneTemplate(orderTemplate), events);
 const contacts = new Contacts(cloneTemplate(contactsTemplate), events);
 
-
 // Дальше идет бизнес-логика
 // Поймали событие, сделали что нужно
-
 
 //WebLarekAPI.ts Получение списка карточек с сервера и отображение их на странице
 api.getCardList()
@@ -98,7 +90,7 @@ events.on('card:select', (item: ICardItem) => {
 //AppData.ts Изменен открытый выбранный лот
 events.on('preview:changed', (item: ICardItem) => {
     const card = new CardPreview(cloneTemplate(cardPreviewTemplate), {
-        onClick: () => events.emit('card:open', item)
+        onClick: () => events.emit('contacts:open', item)
     });
     return modal.render({
         content: card.render({
@@ -112,9 +104,9 @@ events.on('preview:changed', (item: ICardItem) => {
 });
 
 //Basket.ts(при нажатии на кнопку "Оформить" - генерация события(открытие модального окна с видом оплаты и адресом)
-events.on('contacts:open', () => {
+events.on('order:open', () => {
     modal.render({
-        content: contacts.render({
+        content: order.render({
             payment: 'online',
             address: '',
             valid: false,
@@ -123,10 +115,10 @@ events.on('contacts:open', () => {
     });
 });
 
-//Contacts.ts(при нажатии "Далее" - генерация события(открытие следущего модального окна с телефоном и email)
-events.on('order:open', () => {
+//Order.ts(при нажатии "Далее" - генерация события(открытие следущего модального окна с телефоном и email)
+events.on('contacts:open', () => {
     modal.render({
-        content: order.render({
+        content: contacts.render({
             phone: '',
             email: '',
             valid: false,
@@ -134,7 +126,6 @@ events.on('order:open', () => {
         })
     });
 });
-
 
 /*
 // Изменились элементы каталога
@@ -322,4 +313,21 @@ events.on('preview:changed', (item: LotItem) => {
     }
 });
 
+
+// Блокируем прокрутку страницы если открыта модалка
+events.on('modal:open', () => {
+    page.locked = true;
+});
+
+// ... и разблокируем
+events.on('modal:close', () => {
+    page.locked = false;
+});
+
+// Получаем лоты с сервера
+api.getLotList()
+    .then(appData.setCatalog.bind(appData))
+    .catch(err => {
+        console.error(err);
+    });
 */

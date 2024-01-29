@@ -1,6 +1,6 @@
 import _ from "lodash";
-import {Model} from "./base/Model";
 import {ICardItem, FormErrors, IAppState, IOrder, IValidityForm} from "../types";
+import {Model} from "../components/base/Model"
 
 export type Catalog = {
     catalog: ICardItem[]

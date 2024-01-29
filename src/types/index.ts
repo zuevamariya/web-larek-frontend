@@ -1,17 +1,17 @@
 //Order.ts
-export interface IOrderForm {
-    email: string;
-    phone: string;
-}
-
-//Contacts.ts
 export type Pay = 'online' | 'offline';
 
-export interface IContactsForm {
+export interface IOrderForm {
     address: string;
     buttonCard: HTMLButtonElement;
     buttonCash: HTMLButtonElement;
     payment: Pay;
+}
+
+//Contacts.ts
+export interface IContactsForm {
+    email: string;
+    phone: string;
 }
 
 //WebLarek.ts
@@ -57,5 +57,3 @@ export interface IValidityForm {
     address: string;
     payment: Pay;
 }
-
-//index.ts
