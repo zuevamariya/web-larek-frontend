@@ -4,12 +4,12 @@ import {API_URL, CDN_URL} from "./utils/constants";
 import {EventEmitter} from "./components/base/events";
 import {AppState, CardItem, Catalog} from "./components/AppData";
 import {Page} from "./components/Page";
-import {Card, CardPreview} from "./components/Card";
-import {cloneTemplate, createElement, ensureElement} from "./utils/utils";
+import {Card, CardBasket} from "./components/Card";
+import {cloneTemplate, createElement, ensureElement, formatNumber} from "./utils/utils";
 import {Modal} from "./components/common/Modal";
 import {Basket} from "./components/common/Basket";
 import {Tabs} from "./components/common/Tabs";
-import {ICardItem, IOrderForm} from "./types";
+import {ICardItem, IContactsForm, IErrorOrderForm} from "./types";
 import {Order} from "./components/Order";
 import {Success} from "./components/common/Success";
 import { Contacts } from './components/Contacts';
@@ -29,85 +29,158 @@ const contactsTemplate = ensureElement<HTMLTemplateElement>('#contacts');  //ema
 // Модель данных приложения
 const appData = new AppState({}, events);
 
-// Глобальные контейнеры
+// Глобальные контейнеры(главная страница + модальное окно)
 const page = new Page(document.body, events);
 const modal = new Modal(ensureElement<HTMLElement>('#modal-container'), events);
 
-// Переиспользуемые части интерфейса
+// Переиспользуемые части интерфейса(корзина + модальное окно(вид оплаты и адрес) + модальное окно(телефон и email))
 const basket = new Basket(cloneTemplate(basketTemplate), events);
 const order = new Order(cloneTemplate(orderTemplate), events);
 const contacts = new Contacts(cloneTemplate(contactsTemplate), events);
+const success = new Success(cloneTemplate(successTemplate), {onClick: () => events.emit('modal:close')});
 
 // Дальше идет бизнес-логика
 // Поймали событие, сделали что нужно
 
-//WebLarekAPI.ts Получение списка карточек с сервера и отображение их на странице
+//Получение списка карточек с сервера и отображение их на странице
 api.getCardList()
     .then(appData.setCatalog.bind(appData))
     .catch(err => {
         console.error(err);
     });
 
-//Page.ts Открытие корзины при нажатии на иконку "Корзина" на Главной странице
+//Открытие корзины при нажатии на иконку "Корзина" на Главной странице
 events.on('basket:open', () => {
-    return modal.render({
-        content: cloneTemplate(basketTemplate)
+    basket.total = appData.getTotal(); //общая сумма товаров в корзине
+    basket.selected = appData.order.items;//блокировка кнопки "Оформить", если нет товаров
+    modal.render({
+        content: basket.render()
     });
+    order.isDisable();//блокировка кнопок оплаты, если случайно закрыли окно
 });
 
-//Modal.ts Открытие модального окна и блокировка страницы
+//Открытие модального окна и блокировка страницы
 events.on('modal:open', () => {
     page.locked = true;
 });
 
-//Modal.ts При закрытии модального окна - разблокировка страницы
+//При закрытии модального окна - разблокировка страницы
 events.on('modal:close', () => {
     page.locked = false;
 });
 
-//AppData.ts Вывести лоты на страницу
+//Вывести лоты на страницу
 events.on<Catalog>('items:changed', () => {
     page.catalog = appData.catalog.map(item => {
-        const card = new Card('card', cloneTemplate(cardCatalogTemplate), {
-            onClick: () => events.emit('card:select', item)
-        });
-        return card.render({
+        const cardCatalogItem = new Card('card', cloneTemplate(cardCatalogTemplate), {
+            onClick: () => events.emit('preview:changed', item)
+        });//карточка каталога, с функцией открыть(нажатие на саму карточку)
+        return cardCatalogItem.render({
             title: item.title,
             image: item.image,
             category: item.category,
-            price: item.price !== null ? `${item.price} синапсов` : 'Бесценно'
+            price: item.price !== null ? `${formatNumber(item.price)} синапсов` : 'Бесценно',
         });
     });
-
-    page.counter = appData.catalog.length;
+    page.counter = appData.getCountLots();//счетчик товаров у ярлыка корзины при открытии страницы
 });
 
-//intex.ts Открыть лот
+//Выбрать карточку(нажатие)
 events.on('card:select', (item: ICardItem) => {
     appData.setPreview(item);
 });
 
-//AppData.ts Изменен открытый выбранный лот
+//В отедльном модальном окне выводится полная информация о товаре с возможностью купить
 events.on('preview:changed', (item: ICardItem) => {
-    const card = new CardPreview(cloneTemplate(cardPreviewTemplate), {
-        onClick: () => events.emit('contacts:open', item)
-    });
+    if (item.price !== null) {//для карточек, с возможностью купить
+        const cardPreview = new Card('card', cloneTemplate(cardPreviewTemplate), {
+            onClick: () => events.emit('card:buy', item)
+    })
     return modal.render({
-        content: card.render({
+        content: cardPreview.render({
             title: item.title,
             image: item.image,
             description: item.description,
             category: item.category,
-            price: item.price !==null ? `${item.price} синапсов` : 'Бесценно',
+            price: `${formatNumber(item.price)} синапсов`,
         })
     })
+    } else {//для карточек, с которые нельзя купить - сообщение в консоль и закрытие карточки
+        const cardPreviewNotBuy = new Card('card', cloneTemplate(cardPreviewTemplate), {
+            onClick: () => {
+                cardPreviewNotBuy.blockedButton();//блокировка, с указанием запрета покупки
+                console.log(`"${item.title}" нельзя купить, так как данный товар бесценный`);
+                console.log('Вы можете выбрать другие товары, закройте это окно и продолжайте покупки!');
+                setTimeout(() => {
+                    modal.close()
+                }, 15000);
+            }
+    })
+    return modal.render({
+        content: cardPreviewNotBuy.render({
+            title: item.title,
+            image: item.image,
+            description: item.description,
+            category: item.category,
+            price: 'Бесценно',
+        })
+    });
+}});
+
+//Товары корзины и ее состояние
+events.on('basket:view', () => {
+    basket.items = appData.getBasketLots().map((item, index) => {
+        const card = new CardBasket(cloneTemplate(cardBasketTemplate), {
+            onClick: () => events.emit('card:delete', item)
+        });//карточки в корзине, с функцией удалить(кнопка)
+        return card.render({
+            title: item.title,
+            price: `${formatNumber(item.price)} синапсов`,
+            index: index + 1,
+        });
+    });
+    basket.total = appData.getTotal();//сумма товаров корзины
+    basket.selected = appData.order.items;//блокировка кнопки "Оформить"
 });
 
-//Basket.ts(при нажатии на кнопку "Оформить" - генерация события(открытие модального окна с видом оплаты и адресом)
+//Товары каталога и его состояние
+events.on('catalog:view', () => {
+    page.catalog = appData.getCatalogLots().map(item => {
+        const cardCatalogItem = new Card('card', cloneTemplate(cardCatalogTemplate), {
+            onClick: () => events.emit('card:select', item)
+        });//карточки на страницу, с функцией открыть(сама карточка)
+        return cardCatalogItem.render({
+            title: item.title,
+            image: item.image,
+            category: item.category,
+            price: item.price !== null ? `${formatNumber(item.price)} синапсов` : 'Бесценно',
+        });
+    });
+});
+
+//Добавление карточки в корзину
+events.on('card:buy', (item: CardItem) => {
+    appData.toggleOrderedCard(item.id, true); //добавили товар в корзину
+    page.counter = appData.getCountLots(); //поменяли счетчик у ярлыка корзины
+    modal.close() //закрыли модальное окно карточки
+    events.emit('basket:view', item);
+    events.emit('catalog:view', item);
+})
+
+//Удаление карточки из корзины
+events.on('card:delete', (item: CardItem) => {
+    appData.toggleOrderedCard(item.id, false); //удалили карточку из корзины
+    events.emit('basket:view', item);
+    page.counter = appData.getCountLots(); //поменяли счетчик у ярлыка корзины
+    events.emit('catalog:view', item);
+})
+
+//При нажатии на кнопку "Оформить" - генерация события(открытие модального окна с видом оплаты и адресом)
 events.on('order:open', () => {
+    appData.order.total = appData.getTotal();
     modal.render({
         content: order.render({
-            payment: 'online',
+            payment: null,
             address: '',
             valid: false,
             errors: []
@@ -115,8 +188,8 @@ events.on('order:open', () => {
     });
 });
 
-//Order.ts(при нажатии "Далее" - генерация события(открытие следущего модального окна с телефоном и email)
-events.on('contacts:open', () => {
+//При нажатии "Далее" - генерация события(открытие следущего модального окна с телефоном и email)
+events.on('order:submit', () => {
     modal.render({
         content: contacts.render({
             phone: '',
@@ -127,207 +200,46 @@ events.on('contacts:open', () => {
     });
 });
 
-/*
-// Изменились элементы каталога
-events.on<CatalogChangeEvent>('items:changed', () => {
-    page.catalog = appData.catalog.map(item => {
-        const card = new CatalogItem(cloneTemplate(cardCatalogTemplate), {
-            onClick: () => events.emit('card:select', item)
-        });
-        return card.render({
-            title: item.title,
-            image: item.image,
-            description: item.about,
-            status: {
-                status: item.status,
-                label: item.statusLabel
-            },
-        });
-    });
-
-    page.counter = appData.getClosedLots().length;
-});
-
-// Отправлена форма заказа
-events.on('order:submit', () => {
-    api.orderLots(appData.order)
+//при нажатии "Оплатить" - отправка данных на сервер, если все ок - открытие окна о совершении покупки
+events.on('contacts:submit', () => {
+    console.log('данные на сервер: ', appData.order);
+    api.orderCard(appData.order)
         .then((result) => {
-            const success = new Success(cloneTemplate(successTemplate), {
-                onClick: () => {
-                    modal.close();
-                    appData.clearBasket();
-                    events.emit('auction:changed');
-                }
-            });
-
             modal.render({
-                content: success.render({})
+                content: success.render()
             });
+            success.total = result.total;//установлена сумма покупки в окне
+            appData.clearBasket();//очистка корзины, заполнен список id купленных товаров
+            page.counter = appData.getCountLots(); //поменяли счетчик у ярлыка корзины
+            events.emit('basket:view');
+            events.emit('catalog:view');
+            console.log('сумма заказа, ', success.total, result)
         })
         .catch(err => {
             console.error(err);
         });
 });
 
-// Изменилось состояние валидации формы
-events.on('formErrors:change', (errors: Partial<IOrderForm>) => {
-    const { email, phone } = errors;
-    order.valid = !email && !phone;
-    order.errors = Object.values({phone, email}).filter(i => !!i).join('; ');
+// Изменилось состояние валидации формы Order
+events.on('orderErrors:change', (errors: Partial<IErrorOrderForm>) => {
+    const { address, payment } = errors;
+    order.valid = !address && !payment;
+    order.errors = Object.values({address, payment}).filter(i => !!i).join(', а также ');
 });
 
-// Изменилось одно из полей
-events.on(/^order\..*:change/, (data: { field: keyof IOrderForm, value: string }) => {
+// Изменилось одно из полей формы Order
+events.on(/^order\..*:change/, (data: { field: keyof IErrorOrderForm, value: string }) => {
     appData.setOrderField(data.field, data.value);
 });
 
-// Открыть форму заказа
-events.on('order:open', () => {
-    modal.render({
-        content: order.render({
-            phone: '',
-            email: '',
-            valid: false,
-            errors: []
-        })
-    });
+// Изменилось состояние валидации формы Contacts
+events.on('contactsErrors:change', (errors: Partial<IContactsForm>) => {
+    const { email, phone } = errors;
+    contacts.valid = !email && !phone;
+    contacts.errors = Object.values({phone, email}).filter(i => !!i).join(', а также ');
 });
 
-// Открыть активные лоты
-events.on('bids:open', () => {
-    modal.render({
-        content: createElement<HTMLElement>('div', {}, [
-            tabs.render({
-                selected: 'active'
-            }),
-            bids.render()
-        ])
-    });
+// Изменилось одно из полей формы Contacts
+events.on(/^contacts\..*:change/, (data: { field: keyof IContactsForm, value: string }) => {
+    appData.setContactsField(data.field, data.value);
 });
-
-// Открыть закрытые лоты
-events.on('basket:open', () => {
-    modal.render({
-        content: createElement<HTMLElement>('div', {}, [
-            tabs.render({
-                selected: 'closed'
-            }),
-            basket.render()
-        ])
-    });
-});
-
-// Изменения в лоте, но лучше все пересчитать
-events.on('auction:changed', () => {
-    page.counter = appData.getClosedLots().length;
-    bids.items = appData.getActiveLots().map(item => {
-        const card = new BidItem(cloneTemplate(cardBasketTemplate), {
-            onClick: () => events.emit('preview:changed', item)
-        });
-        return card.render({
-            title: item.title,
-            image: item.image,
-            status: {
-                amount: item.price,
-                status: item.isMyBid
-            }
-        });
-    });
-    let total = 0;
-    basket.items = appData.getClosedLots().map(item => {
-        const card = new BidItem(cloneTemplate(soldTemplate), {
-            onClick: (event) => {
-                const checkbox = event.target as HTMLInputElement;
-                appData.toggleOrderedLot(item.id, checkbox.checked);
-                basket.total = appData.getTotal();
-                basket.selected = appData.order.items;
-            }
-        });
-        return card.render({
-            title: item.title,
-            image: item.image,
-            status: {
-                amount: item.price,
-                status: item.isMyBid
-            }
-        });
-    });
-    basket.selected = appData.order.items;
-    basket.total = total;
-})
-
-// Открыть лот
-events.on('card:select', (item: LotItem) => {
-    appData.setPreview(item);
-});
-
-// Изменен открытый выбранный лот
-events.on('preview:changed', (item: LotItem) => {
-    const showItem = (item: LotItem) => {
-        const card = new AuctionItem(cloneTemplate(cardPreviewTemplate));
-        const auction = new Auction(cloneTemplate(auctionTemplate), {
-            onSubmit: (price) => {
-                item.placeBid(price);
-                auction.render({
-                    status: item.status,
-                    time: item.timeStatus,
-                    label: item.auctionStatus,
-                    nextBid: item.nextBid,
-                    history: item.history
-                });
-            }
-        });
-
-        modal.render({
-            content: card.render({
-                title: item.title,
-                image: item.image,
-                description: item.description.split("\n"),
-                status: auction.render({
-                    status: item.status,
-                    time: item.timeStatus,
-                    label: item.auctionStatus,
-                    nextBid: item.nextBid,
-                    history: item.history
-                })
-            })
-        });
-
-        if (item.status === 'active') {
-            auction.focus();
-        }
-    };
-
-    if (item) {
-        api.getLotItem(item.id)
-            .then((result) => {
-                item.description = result.description;
-                item.history = result.history;
-                showItem(item);
-            })
-            .catch((err) => {
-                console.error(err);
-            })
-    } else {
-        modal.close();
-    }
-});
-
-
-// Блокируем прокрутку страницы если открыта модалка
-events.on('modal:open', () => {
-    page.locked = true;
-});
-
-// ... и разблокируем
-events.on('modal:close', () => {
-    page.locked = false;
-});
-
-// Получаем лоты с сервера
-api.getLotList()
-    .then(appData.setCatalog.bind(appData))
-    .catch(err => {
-        console.error(err);
-    });
-*/

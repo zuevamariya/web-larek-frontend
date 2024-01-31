@@ -6,35 +6,54 @@ export class Order extends Form<IOrderForm> {
     protected _buttonCard: HTMLButtonElement;
     protected _buttonCash: HTMLButtonElement;
     protected _payment: Pay;
-    protected _buttonOrder: HTMLButtonElement;
 
     constructor(container: HTMLFormElement, events: IEvents) {
         super(container, events);
 
         this._buttonCard = container.querySelector('[name="card"]');
         this._buttonCash = container.querySelector('[name="cash"]');
-        this._buttonOrder = container.querySelector('[type="submit"]');
 
         if (this._buttonCard) {
             this._buttonCard.addEventListener('click', () => {
-                this._payment = 'online';
+                const field = 'payment';
+                const value = 'online';
+                this.events.emit(`${this.container.name}.${'card'}:change`, {
+                    field,
+                    value
+                });
+                this.payment = value;
+                this._buttonCard.classList.add('button_alt-active');
+                this._buttonCash.classList.remove('button_alt-active');
+                console.log('Оплата картой')
             });
         }
         
-        if (this._buttonCard) {
+        if (this._buttonCash) {
             this._buttonCash.addEventListener('click', () => {
-                this._payment = 'offline';
-            });
-        }
-        
-        if (this._buttonCard) {
-            this._buttonOrder.addEventListener('click', () => {
-                events.emit('contacts:open');
+                const field = 'payment';
+                const value = 'offline';
+                this.events.emit(`${this.container.name}.${'cash'}:change`, {
+                    field,
+                    value
+                });
+                this.payment = value;
+                this._buttonCash.classList.add('button_alt-active');
+                this._buttonCard.classList.remove('button_alt-active');
+                console.log('Оплата наличными')
             });
         }
     }
 
     set address(value: string) {
         (this.container.elements.namedItem('address') as HTMLInputElement).value = value;
+    }
+
+    set payment(value: Pay) {
+        this._payment = value;
+    }
+
+    isDisable() {
+        this._buttonCard.classList.remove('button_alt-active');
+        this._buttonCash.classList.remove('button_alt-active');
     }
 }

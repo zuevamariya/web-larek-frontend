@@ -1,4 +1,3 @@
-//Order.ts
 export type Pay = 'online' | 'offline';
 
 export interface IOrderForm {
@@ -8,13 +7,16 @@ export interface IOrderForm {
     payment: Pay;
 }
 
-//Contacts.ts
 export interface IContactsForm {
     email: string;
     phone: string;
 }
 
-//WebLarek.ts
+export interface IErrorOrderForm {
+    address: string;
+    payment: Pay;
+}
+
 export interface ICardItem {
     id: string;
     description: string;
@@ -38,10 +40,7 @@ export interface IOrder {
     items: string[]
 }
 
-//AppData.ts
 export type FormErrors = Partial<Record<keyof IOrder, string>>;
-
-export type CardStatus = 'active' | 'closed';
 
 export interface IAppState {
     catalog: ICardItem[];
@@ -51,9 +50,12 @@ export interface IAppState {
     formErrors: FormErrors;
 }
 
-export interface IValidityForm {
-    email: string;
-    phone: string;
+export interface IValidityOrderForm {
     address: string;
     payment: Pay;
+}
+
+export interface IValidityContactsForm {
+    email: string;
+    phone: string;
 }
