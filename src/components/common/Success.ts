@@ -1,13 +1,6 @@
 import {Component} from "../base/Component";
 import {ensureElement} from "../../utils/utils";
-
-interface ISuccess {
-    total: number;
-}
-
-interface ISuccessActions {
-    onClick: () => void;
-}
+import { ISuccess, ISuccessActions } from "../../types";
 
 export class Success extends Component<ISuccess> {
     protected _close: HTMLElement;

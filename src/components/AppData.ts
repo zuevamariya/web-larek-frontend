@@ -1,10 +1,6 @@
 import _ from "lodash";
-import {ICardItem, FormErrors, IAppState, IOrder, IValidityOrderForm, IValidityContactsForm} from "../types";
+import {ICardItem, FormErrors, IAppState, IOrder, IValidityOrderForm, IContactsForm} from "../types";
 import {Model} from "../components/base/Model"
-
-export type Catalog = {
-    catalog: ICardItem[]
-};
 
 export class CardItem extends Model<ICardItem> {
     id: string;
@@ -28,56 +24,54 @@ export class AppState extends Model<IAppState> {
     };
     formErrors: FormErrors = {};
 
-    setCatalog(items: ICardItem[]) {  //вывод товаров на страницу
+    setCatalog(items: ICardItem[]) {
         this.catalog = items.map(item => new CardItem(item, this.events));
         this.emitChanges('items:changed', { catalog: this.catalog });
-        console.log('Массив карточек, полученных с сервера: ', items)
     }
 
-    setPreview(item: ICardItem) {  //предварительный просмотр для указанной карточки
+    setPreview(item: ICardItem) {
         this.emitChanges('preview:changed', item);
     }
 
-    getCountLots(): number {  //возврат количества товаров в корзине
+    getCountLots(): number {
         return this.order.items.length;
     }
 
-    getBasketLots(): CardItem[] { //вывод товаров, добавленных в корзину
+    getBasketLots(): CardItem[] {
         return this.catalog
             .filter(item => this.order.items.includes(item.id) && !this.basket.includes(item.id));
     }
 
-    getCatalogLots(): CardItem[] { //вывод товаров галереи
+    getCatalogLots(): CardItem[] {
         return this.catalog
             .filter(item => !this.order.items.includes(item.id) && !this.basket.includes(item.id));
     }
 
-    toggleOrderedCard(id: string, isIncluded: boolean) { //добавление/удаление товара из корзины
+    toggleOrderedCard(id: string, isIncluded: boolean) {
         if (isIncluded) {
             this.order.items = _.uniq([...this.order.items, id]);
-            console.log('добавлена в корзину: ', id)
-            console.log('всего в корзине: ', this.order.items.length)
         } else {
             this.order.items = _.without(this.order.items, id);
-            console.log('убрана из корзины: ', id)
-            console.log('всего в корзине: ', this.order.items.length)
         }
     }
 
-    clearBasket() {  //очистка корзины
+    clearBasket() {
         this.order.items.forEach(id => {
             this.basket.push(id);
             this.toggleOrderedCard(id, false);
         });
-        console.log('очистка корзины, количество товаров в ней: ', this.order.items.length)
-        console.log('купленные товары: ', this.basket)
+        this.order.payment = '';
+        this.order.address = '';
+        this.order.email = '';
+        this.order.phone = '';
+        this.order.total = 0;
     }
 
-    getTotal() {  //вывод суммы товаров
+    getTotal() {
         return this.order.items.reduce((a, c) => a + this.catalog.find(it => it.id === c).price, 0)
     }
 
-    setOrderField(field: keyof IValidityOrderForm, value: string) {//установка значений и генерация события
+    setOrderField(field: keyof IValidityOrderForm, value: string) {
         this.order[field] = value;
 
         if (this.validateOrder()) {
@@ -85,12 +79,16 @@ export class AppState extends Model<IAppState> {
         }
     }
 
-    validateOrder() {//валидация
+    validateOrder() {
         const errors: typeof this.formErrors = {};
+        const addressPattern = /^[а-яА-ЯёЁa-zA-Z0-9\s\/.-]{20,}$/;
 
         if (!this.order.address) {
             errors.address = 'Необходимо указать адрес';
+        } else if (!addressPattern.test(this.order.address)) {
+            errors.address = 'Адрес должен содержать только буквы, цифры, пробелы, точки и "/", и быть не менее 20 символов';
         }
+    
 
         if (!this.order.payment) {
             errors.payment = 'Необходимо указать вид оплаты';
@@ -101,7 +99,7 @@ export class AppState extends Model<IAppState> {
         return Object.keys(errors).length === 0;
     }
 
-    setContactsField(field: keyof IValidityContactsForm, value: string) {
+    setContactsField(field: keyof IContactsForm, value: string) {
         this.order[field] = value;
 
         if (this.validateContacts()) {
@@ -111,12 +109,19 @@ export class AppState extends Model<IAppState> {
 
     validateContacts() {
         const errors: typeof this.formErrors = {};
+        const emailPattern = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+        const phonePattern = /^\+7\(\d{3}\)\d{3}-\d{2}-\d{2}$/;
 
         if (!this.order.email) {
             errors.email = 'Необходимо указать email';
+        } else if (!emailPattern.test(this.order.email)) {
+            errors.email = 'Некорректный адрес электронной почты';
         }
+
         if (!this.order.phone) {
             errors.phone = 'Необходимо указать телефон';
+        } else if (!phonePattern.test(this.order.phone)) {
+            errors.phone = 'Телефон должен быть указан в таком формате: +7(XXX)XXX-XX-XX';
         }
 
         this.formErrors = errors;

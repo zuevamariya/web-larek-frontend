@@ -1,7 +1,7 @@
 export abstract class Component<T> {
   protected constructor(protected readonly container: HTMLElement) {}
 
-// Инструментарий для работы с DOM в дочерних компонентах
+  // Инструментарий для работы с DOM в дочерних компонентах
 
   // Переключить класс
   toggleClass(element: HTMLElement, className: string, force?: boolean) {

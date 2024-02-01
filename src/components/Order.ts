@@ -24,7 +24,6 @@ export class Order extends Form<IOrderForm> {
                 this.payment = value;
                 this._buttonCard.classList.add('button_alt-active');
                 this._buttonCash.classList.remove('button_alt-active');
-                console.log('Оплата картой')
             });
         }
         
@@ -39,7 +38,6 @@ export class Order extends Form<IOrderForm> {
                 this.payment = value;
                 this._buttonCash.classList.add('button_alt-active');
                 this._buttonCard.classList.remove('button_alt-active');
-                console.log('Оплата наличными')
             });
         }
     }
@@ -55,5 +53,11 @@ export class Order extends Form<IOrderForm> {
     isDisable() {
         this._buttonCard.classList.remove('button_alt-active');
         this._buttonCash.classList.remove('button_alt-active');
+        const field = 'payment';
+                const value = '';
+                this.events.emit(`${this.container.name}.${'cash'}:change`, {
+                    field,
+                    value
+                });
     }
 }

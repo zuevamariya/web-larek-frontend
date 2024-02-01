@@ -1,28 +1,14 @@
 import {Component} from "./base/Component";
 import {ensureElement, formatNumber} from "../utils/utils";
-
-interface ICardActions {
-    onClick: (event: MouseEvent) => void;
-}
-
-export interface ICard {
-    category: string;
-    title: string;
-    image: string;
-    description?: string;
-    price: number | string;
-    button?: HTMLButtonElement;
-    id: string;
-}
+import {ICardActions, ICard, ICardBasket} from "../types";
 
 export class Card extends Component<ICard> {
     protected _title: HTMLElement;
     protected _image: HTMLImageElement;
     protected _category: HTMLElement;
     protected _price: HTMLElement;
-    protected _description?: HTMLElement;
-    protected _button?: HTMLButtonElement;
-    protected _id: string;
+    protected _description: HTMLElement;
+    protected _button: HTMLButtonElement;
 
     constructor(protected blockName: string, container: HTMLElement, actions?: ICardActions) {
         super(container);
@@ -43,11 +29,6 @@ export class Card extends Component<ICard> {
         }
     }
 
-    blockedButton() {
-        this.setDisabled(this._button, true);
-        this.setText(this._button, 'Запрещено!')
-    }
-
     set title(value: string) {
         this.setText(this._title, value);
     }
@@ -56,7 +37,20 @@ export class Card extends Component<ICard> {
         this.setImage(this._image, value, this.title)
     }
 
-    categoryColor(value: string): string {
+    set price(value: number | null) {
+        this.setText(this._price, value);
+    }
+    
+    set description(value: string) {
+        this.setText(this._description, value);
+    }
+
+    set category(value: string) {
+        this.setText(this._category, value);
+        this.toggleClass(this._category, `card__category_${this.getCategory(value)}`)
+    }
+
+    getCategory(value: string): string {
         switch (value) {
             case 'софт-скил':
                 return 'soft';
@@ -70,27 +64,14 @@ export class Card extends Component<ICard> {
                 return 'other';
         }
     }
-    
-    set category(value: string) {
-        this.setText(this._category, value);
-        this.toggleClass(this._category, `card__category_${this.categoryColor(value)}`)
-    }
 
-    set price(value: number | null) {
-        this.setText(this._price, value);
+    blockedButton() {
+        if (this._button) {
+            this.setDisabled(this._button, true);
+            this.setText(this._button, 'Запрещено!')
+            console.log('Данный товар нельзя купить, так как он бесценный. \nВы можете выбрать другие товары. \nЗакройте это окно и продолжайте покупки! \nИли оно закроется само, спустя 10 секунд.');
+        }
     }
-    
-    set description(value: string) {
-        this.setText(this._description, value);
-    }
-}
-
-export interface ICardBasket {
-    title: string;
-    price: number | string;
-    button: HTMLButtonElement;
-    id: string;
-    index: number;
 }
 
 export class CardBasket extends Component<ICardBasket> {
@@ -110,8 +91,6 @@ export class CardBasket extends Component<ICardBasket> {
         if (actions?.onClick) {
             if (this._button) {
                 this._button.addEventListener('click', (actions.onClick));
-            } else {
-                container.addEventListener('click', actions.onClick);
             }
         }
     }

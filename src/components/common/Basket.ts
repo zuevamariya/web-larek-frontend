@@ -1,12 +1,7 @@
 import {Component} from "../base/Component";
 import {createElement, ensureElement, formatNumber} from "../../utils/utils";
 import {EventEmitter} from "../base/events";
-
-interface IBasketView {
-    items: HTMLElement[];
-    total: number;
-    selected: string[];
-}
+import { IBasketView } from "../../types";
 
 export class Basket extends Component<IBasketView> {
     protected _list: HTMLElement;

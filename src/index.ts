@@ -2,14 +2,13 @@ import './scss/styles.scss';
 import {WebLarekAPI} from "./components/WebLarekAPI";
 import {API_URL, CDN_URL} from "./utils/constants";
 import {EventEmitter} from "./components/base/events";
-import {AppState, CardItem, Catalog} from "./components/AppData";
+import {AppState, CardItem} from "./components/AppData";
 import {Page} from "./components/Page";
 import {Card, CardBasket} from "./components/Card";
-import {cloneTemplate, createElement, ensureElement, formatNumber} from "./utils/utils";
+import {cloneTemplate, ensureElement, formatNumber} from "./utils/utils";
 import {Modal} from "./components/common/Modal";
 import {Basket} from "./components/common/Basket";
-import {Tabs} from "./components/common/Tabs";
-import {ICardItem, IContactsForm, IErrorOrderForm} from "./types";
+import {ICardItem, IContactsForm, IValidityOrderForm, Catalog, IOrderResult} from "./types";
 import {Order} from "./components/Order";
 import {Success} from "./components/common/Success";
 import { Contacts } from './components/Contacts';
@@ -37,7 +36,7 @@ const modal = new Modal(ensureElement<HTMLElement>('#modal-container'), events);
 const basket = new Basket(cloneTemplate(basketTemplate), events);
 const order = new Order(cloneTemplate(orderTemplate), events);
 const contacts = new Contacts(cloneTemplate(contactsTemplate), events);
-const success = new Success(cloneTemplate(successTemplate), {onClick: () => events.emit('modal:close')});
+const success = new Success(cloneTemplate(successTemplate), {onClick: () => modal.close()});
 
 // Дальше идет бизнес-логика
 // Поймали событие, сделали что нужно
@@ -46,7 +45,7 @@ const success = new Success(cloneTemplate(successTemplate), {onClick: () => even
 api.getCardList()
     .then(appData.setCatalog.bind(appData))
     .catch(err => {
-        console.error(err);
+        console.error('Произошла ошибка с получением данных с сервера: ', err);
     });
 
 //Открытие корзины при нажатии на иконку "Корзина" на Главной странице
@@ -56,7 +55,7 @@ events.on('basket:open', () => {
     modal.render({
         content: basket.render()
     });
-    order.isDisable();//блокировка кнопок оплаты, если случайно закрыли окно
+    order.isDisable();//блокировка кнопок оплаты, если случайно закрыли окно()
 });
 
 //Открытие модального окна и блокировка страницы
@@ -107,13 +106,11 @@ events.on('preview:changed', (item: ICardItem) => {
     })
     } else {//для карточек, с которые нельзя купить - сообщение в консоль и закрытие карточки
         const cardPreviewNotBuy = new Card('card', cloneTemplate(cardPreviewTemplate), {
-            onClick: () => {
+            onClick: () => { 
                 cardPreviewNotBuy.blockedButton();//блокировка, с указанием запрета покупки
-                console.log(`"${item.title}" нельзя купить, так как данный товар бесценный`);
-                console.log('Вы можете выбрать другие товары, закройте это окно и продолжайте покупки!');
                 setTimeout(() => {
                     modal.close()
-                }, 15000);
+                }, 10000);//закрытие окна через 10 секунд
             }
     })
     return modal.render({
@@ -202,9 +199,8 @@ events.on('order:submit', () => {
 
 //при нажатии "Оплатить" - отправка данных на сервер, если все ок - открытие окна о совершении покупки
 events.on('contacts:submit', () => {
-    console.log('данные на сервер: ', appData.order);
     api.orderCard(appData.order)
-        .then((result) => {
+        .then((result: IOrderResult) => {
             modal.render({
                 content: success.render()
             });
@@ -213,22 +209,21 @@ events.on('contacts:submit', () => {
             page.counter = appData.getCountLots(); //поменяли счетчик у ярлыка корзины
             events.emit('basket:view');
             events.emit('catalog:view');
-            console.log('сумма заказа, ', success.total, result)
         })
         .catch(err => {
-            console.error(err);
+            console.error('Не удалось оформить заказ, произошла ошибка при попытке оплатить: ', err);
         });
 });
 
 // Изменилось состояние валидации формы Order
-events.on('orderErrors:change', (errors: Partial<IErrorOrderForm>) => {
+events.on('orderErrors:change', (errors: Partial<IValidityOrderForm>) => {
     const { address, payment } = errors;
     order.valid = !address && !payment;
     order.errors = Object.values({address, payment}).filter(i => !!i).join(', а также ');
 });
 
 // Изменилось одно из полей формы Order
-events.on(/^order\..*:change/, (data: { field: keyof IErrorOrderForm, value: string }) => {
+events.on(/^order\..*:change/, (data: { field: keyof IValidityOrderForm, value: string }) => {
     appData.setOrderField(data.field, data.value);
 });
 
