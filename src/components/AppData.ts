@@ -1,6 +1,6 @@
 import _ from "lodash";
 import {ICardItem, FormErrors, IAppState, IOrder, IValidityOrderForm, IContactsForm} from "../types";
-import {Model} from "../components/base/Model"
+import {Model} from "./base/model"
 
 export class CardItem extends Model<ICardItem> {
     id: string;
@@ -12,7 +12,7 @@ export class CardItem extends Model<ICardItem> {
 }
 
 export class AppState extends Model<IAppState> {
-    catalog: CardItem[];
+    catalog: ICardItem[];
     basket: string[] = [];
     order: IOrder = {
         payment: '',
@@ -25,7 +25,7 @@ export class AppState extends Model<IAppState> {
     formErrors: FormErrors = {};
 
     setCatalog(items: ICardItem[]) {
-        this.catalog = items.map(item => new CardItem(item, this.events));
+        this.catalog = items;
         this.emitChanges('items:changed', { catalog: this.catalog });
     }
 
@@ -37,12 +37,12 @@ export class AppState extends Model<IAppState> {
         return this.order.items.length;
     }
 
-    getBasketLots(): CardItem[] {
+    getBasketLots(): ICardItem[] {
         return this.catalog
             .filter(item => this.order.items.includes(item.id) && !this.basket.includes(item.id));
     }
 
-    getCatalogLots(): CardItem[] {
+    getCatalogLots(): ICardItem[] {
         return this.catalog
             .filter(item => !this.order.items.includes(item.id) && !this.basket.includes(item.id));
     }
@@ -81,12 +81,12 @@ export class AppState extends Model<IAppState> {
 
     validateOrder() {
         const errors: typeof this.formErrors = {};
-        const addressPattern = /^[а-яА-ЯёЁa-zA-Z0-9\s\/.-]{20,}$/;
+        const addressPattern = /^[а-яА-ЯёЁa-zA-Z0-9\s\/.,-]{20,}$/;
 
         if (!this.order.address) {
             errors.address = 'Необходимо указать адрес';
         } else if (!addressPattern.test(this.order.address)) {
-            errors.address = 'Адрес должен содержать только буквы, цифры, пробелы, точки и "/", и быть не менее 20 символов';
+            errors.address = 'Адрес должен содержать только буквы, цифры, пробелы, точки, запятые и "/", и быть не менее 20 символов';
         }
     
 

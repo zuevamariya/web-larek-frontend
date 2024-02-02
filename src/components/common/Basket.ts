@@ -1,4 +1,4 @@
-import {Component} from "../base/Component";
+import {Component} from "../base/component";
 import {createElement, ensureElement, formatNumber} from "../../utils/utils";
 import {EventEmitter} from "../base/events";
 import { IBasketView } from "../../types";

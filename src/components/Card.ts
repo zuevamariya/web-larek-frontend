@@ -1,4 +1,4 @@
-import {Component} from "./base/Component";
+import {Component} from "./base/component";
 import {ensureElement, formatNumber} from "../utils/utils";
 import {ICardActions, ICard, ICardBasket} from "../types";
 
