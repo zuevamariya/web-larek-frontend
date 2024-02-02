@@ -1,5 +1,5 @@
 import {Component} from "./base/component";
-import {ensureElement, formatNumber} from "../utils/utils";
+import {ensureElement} from "../utils/utils";
 import {ICardActions, ICard, ICardBasket} from "../types";
 
 export class Card extends Component<ICard> {
@@ -69,7 +69,7 @@ export class Card extends Component<ICard> {
         if (this._button) {
             this.setDisabled(this._button, true);
             this.setText(this._button, 'Запрещено!')
-            console.log('Данный товар нельзя купить, так как он бесценный. \nВы можете выбрать другие товары. \nЗакройте это окно и продолжайте покупки! \nИли оно закроется само, спустя 10 секунд.');
+            console.log('Данный товар нельзя купить, так как он бесценный. \nВы можете выбрать другие товары. \nЗакройте это окно и продолжайте покупки!');
         }
     }
 }

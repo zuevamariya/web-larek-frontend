@@ -85,8 +85,8 @@ export class AppState extends Model<IAppState> {
 
         if (!this.order.address) {
             errors.address = 'Необходимо указать адрес';
-        } else if (!addressPattern.test(this.order.address)) {
-            errors.address = 'Адрес должен содержать только буквы, цифры, пробелы, точки, запятые и "/", и быть не менее 20 символов';
+        } else if (!addressPattern.test(this.order.address)) {//данная ошибка в консоли выдается не зависимо от проверок регулярными выражениями
+            errors.address = 'Адрес должен содержать только буквы, цифры, пробелы, точки, запятые и "/", и быть не менее 20 символов';//добавила запятую
         }
     
 

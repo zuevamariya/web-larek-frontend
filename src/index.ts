@@ -108,9 +108,6 @@ events.on('preview:changed', (item: ICardItem) => {
         const cardPreviewNotBuy = new Card('card', cloneTemplate(cardPreviewTemplate), {
             onClick: () => { 
                 cardPreviewNotBuy.blockedButton();//блокировка, с указанием запрета покупки
-                setTimeout(() => {
-                    modal.close()
-                }, 10000);//закрытие окна через 10 секунд
             }
     })
     return modal.render({
@@ -122,6 +119,9 @@ events.on('preview:changed', (item: ICardItem) => {
             price: 'Бесценно',
         })
     });
+    setTimeout(() => {
+        modal.close()
+    }, 10000);//закрытие окна через 10 секунд
 }});
 
 //Товары корзины и ее состояние
